@@ -1,12 +1,19 @@
 import * as React from 'react';
 import Container from '@mui/material/Container';
-import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import * as tfvis from '@tensorflow/tfjs-vis';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
+import {
+    updateShouldUpdate,
+    updateActivationFunction,
+    updateDataFunction,
+    updateVariance,
+    updateN } from '../state/state';
+import { useAtom } from '@dbeining/react-atom';
+import { modelState, dataGenerationState, appState } from '../state/state';
 
 
 function y(x: any) {return (x + 0.8) * (x + 0.2) * (x - 0.3) * (x - 0.6);}
@@ -50,25 +57,24 @@ function DataVisualisation(props: any) {
 
     const divRef = React.useRef<HTMLDivElement>(null);
 
-    const f: any = functions[props.func]
-    const [activationFunction, setActivationFunction] = React.useState('ReLU');
-    const [trainingSamples, setTrainingSamples] = React.useState<any>(null);
+    const { activationFunction, layers, learningRate, epochs } = useAtom(modelState);
+    const { N, dataFunction, variance } = useAtom(dataGenerationState);
+    const { shouldUpdateData } = useAtom(appState);
+    const f: any = functions[dataFunction];
 
     const handleActivationFunctionChange = (event: SelectChangeEvent) => {
-        setActivationFunction(event.target.value);
+        updateActivationFunction(event.target.value);
     }
 
     React.useEffect(()=> {
-        if(!trainingSamples){
-            // GENERATE TRAINING SAMPLES
-            const samples = createTrainingSamples(props.N, {max:1,min:-1}, f, noise);
-            setTrainingSamples(samples)
-            // VISUALISATION
-            const data = { values: samples, series: ['x > label'] };
-            const opts = { width: 500};
-            if(divRef.current){
-                tfvis.render.scatterplot(divRef.current, data, opts);
-            }
+        // GENERATE TRAINING SAMPLES
+        const samples = createTrainingSamples(N, {max:1,min:-1}, f, noise);
+        // VISUALISATION
+        const data = { values: samples, series: ['x > label'] };
+        const opts = { width: 500};
+        if(divRef.current && shouldUpdateData){
+            tfvis.render.scatterplot(divRef.current, data, opts);
+            updateShouldUpdate(false);
         }
     });
 

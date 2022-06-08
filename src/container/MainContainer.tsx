@@ -6,8 +6,11 @@ import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
 import Container from '@mui/material/Container';
-
 import DataVisualisation from '../components/DataVisualisation';
+
+import { updateShouldUpdate, updateDataFunction, updateVariance, updateN } from '../state/state';
+import { useAtom } from '@dbeining/react-atom';
+import { dataGenerationState } from '../state/state';
 
 function MainContainer() {
 
@@ -16,37 +19,41 @@ function MainContainer() {
         'x_squared'
     ]
 
-    const [N, setN] = React.useState<number>(100);
-    const [variance, setVariance] = React.useState(0.1);
-    const [f, setF] = React.useState<string>(functions[0]);
+    //const [N, setN] = React.useState<number>(100);
+    //const [variance, setVariance] = React.useState(0.1);
+    //const [f, setF] = React.useState<string>(functions[0]);
     const [showVis, setShowVis] = React.useState(false);
 
+    const { N, dataFunction, variance } = useAtom(dataGenerationState);
+
     const handleNChange = (event: SelectChangeEvent) => {
-        setN(parseInt(event.target.value));
-        setShowVis(false);
+        updateShouldUpdate(true);
+        updateN(parseInt(event.target.value));
     };
     const handleVarianceChange = (event: SelectChangeEvent) => {
-        setVariance(parseFloat(event.target.value));
-        setShowVis(false);
+        updateShouldUpdate(true);
+        updateVariance(parseFloat(event.target.value));
     }
     const handleFChange = (event: SelectChangeEvent) => {
-        setF(event.target.value);
-        setShowVis(false);
+        updateShouldUpdate(true);
+        updateDataFunction(event.target.value);
     }
 
     const handleGenerateClick = () => {
+        updateShouldUpdate(true);
         setShowVis(true)
     }
 
     return ( <>
 
-        <h1>Generate Training Data</h1>
+        <h1>Predict 2D-Data</h1>
         <Container sx={{
             display: 'flex',
         }}>
             <Container sx={{display: 'flex', justifyContent: 'center', flexGrow: '1'}}>
-                <Box sx={{ width: 120, marginTop: '130px' }}>
+                <Box sx={{ marginTop: '50px' }}>
 
+                <h4>Generate Training Data</h4>
                     <Box>
                         <FormControl fullWidth>
                             <InputLabel id="N-label">N</InputLabel>
@@ -91,7 +98,7 @@ function MainContainer() {
                             <Select
                                 labelId="function-label"
                                 id="f-label"
-                                value={f}
+                                value={dataFunction}
                                 label="function-label"
                                 onChange={handleFChange}
                             >
@@ -106,11 +113,7 @@ function MainContainer() {
                 </Box>
             </Container>
 
-            <DataVisualisation
-                show={showVis}
-                N={N}
-                func={f}
-            />
+            <DataVisualisation show={showVis}/>
 
         </Container>
     </> )
