@@ -1,7 +1,12 @@
 import * as React from 'react';
 import Container from '@mui/material/Container';
+import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import * as tfvis from '@tensorflow/tfjs-vis';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import Select, { SelectChangeEvent } from '@mui/material/Select';
 
 
 function y(x: any) {return (x + 0.8) * (x + 0.2) * (x - 0.3) * (x - 0.6);}
@@ -46,31 +51,56 @@ function DataVisualisation(props: any) {
     const divRef = React.useRef<HTMLDivElement>(null);
 
     const f: any = functions[props.func]
+    const [activationFunction, setActivationFunction] = React.useState('ReLU');
+    const [trainingSamples, setTrainingSamples] = React.useState<any>(null);
+
+    const handleActivationFunctionChange = (event: SelectChangeEvent) => {
+        setActivationFunction(event.target.value);
+    }
 
     React.useEffect(()=> {
-        // GENERATE TRAINING SAMPLES
-        const samples = createTrainingSamples(props.N, {max:1,min:-1}, f, noise);
-        // VISUALISATION
-        const data = { values: samples, series: ['x'] };
-        const meta = {name:'Training Data', tab: 'Training'};
-        const opts = { width: 500};
-        //let plot: Element = (<div></div>);
-        //const plot = tfvis.visor().surface({ name: 'scatter', tab: 'Charts' });
-        //let plot = document.getElementById('plot1');
-        if(divRef.current){
-            tfvis.render.scatterplot(divRef.current, data, opts);
+        if(!trainingSamples){
+            // GENERATE TRAINING SAMPLES
+            const samples = createTrainingSamples(props.N, {max:1,min:-1}, f, noise);
+            setTrainingSamples(samples)
+            // VISUALISATION
+            const data = { values: samples, series: ['x > label'] };
+            const opts = { width: 500};
+            if(divRef.current){
+                tfvis.render.scatterplot(divRef.current, data, opts);
+            }
         }
     });
 
 
-    let display = 'relative';
+    let display = 'flex';
     if(!props.show) {display = 'none';}
 
     return (<div>
-        <Container sx={{display: 'flex', flexGrow: '4', justifyContent: 'flex-start'}}>
-            <Box>
+        <Container sx={{ display: display, width: '1000px' }}>
+            <Box sx={{marginTop: '80px', boxShadow: '3px 3px 7px 7px rgba(0,0,0,0.05)'}}>
+                <h3>Training Data</h3>
                 <div ref={divRef} className="plot1"></div>
             </Box>
+            <Container sx={{width: '200px', boxShadow: '3px 3px 7px 7px rgba(0,0,0,0.05)'}}>
+                <h3>model setup</h3>
+                <Box>
+                    <FormControl fullWidth>
+                        <InputLabel id="activation-label">Activation Function</InputLabel>
+                        <Select
+                            labelId="activation-label"
+                            id="af-label"
+                            value={activationFunction}
+                            label="Activation Function"
+                            onChange={handleActivationFunctionChange}
+                        >
+                            <MenuItem value={'ReLU'}>ReLU</MenuItem>
+                            <MenuItem value={'sigmoid'}>sigmoid</MenuItem>
+                            <MenuItem value={'tanh'}>tanh</MenuItem>
+                        </Select>
+                    </FormControl>
+                </Box>
+            </Container>
         </Container>
     </div>);
 }

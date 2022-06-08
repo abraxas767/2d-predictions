@@ -23,12 +23,15 @@ function MainContainer() {
 
     const handleNChange = (event: SelectChangeEvent) => {
         setN(parseInt(event.target.value));
+        setShowVis(false);
     };
     const handleVarianceChange = (event: SelectChangeEvent) => {
         setVariance(parseFloat(event.target.value));
+        setShowVis(false);
     }
     const handleFChange = (event: SelectChangeEvent) => {
         setF(event.target.value);
+        setShowVis(false);
     }
 
     const handleGenerateClick = () => {
