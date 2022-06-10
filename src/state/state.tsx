@@ -18,7 +18,6 @@ export const modelState = Atom.of({
     optimizer: 'adam',
     layers: [
         { useBias: true, editable: false, unitCount: 1, id: 'input' },
-        { useBias: true, editable: true, unitCount: 1, id: 'test' },
         { useBias: true, editable: false, unitCount: 1, id: 'output' },
     ],
     learningRate: 1,
@@ -33,12 +32,19 @@ export const dataGenerationState = Atom.of({
     variance: 0.3,
 });
 
-const trainingDataState = Atom.of({
+export const trainingDataState = Atom.of({
     data: []
 });
 
 
 // ACTIONS
+
+
+export const updateTrainingDataState = (data: any)=>
+    swap(trainingDataState, state => ({
+       ...state,
+        data: data
+    }));
 
 // model State
 export const addLayer = (layer: layerInterface)=>

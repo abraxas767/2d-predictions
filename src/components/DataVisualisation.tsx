@@ -2,6 +2,7 @@ import * as React from 'react';
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import * as tfvis from '@tensorflow/tfjs-vis';
+import * as tf from '@tensorflow/tfjs';
 import InputLabel from '@mui/material/InputLabel';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Layer from '../components/Layer/Layer';
@@ -20,10 +21,15 @@ import {
     updateUCount,
     updateLayerCount,
     updateEpochCount,
+    updateTrainingDataState,
     updateLearningRate,
     updateN } from '../state/state';
 import { useAtom } from '@dbeining/react-atom';
-import { modelState, dataGenerationState, appState } from '../state/state';
+import {
+    modelState,
+    dataGenerationState,
+    appState,
+    trainingDataState } from '../state/state';
 
 
 function y(x: any) {return (x + 0.8) * (x + 0.2) * (x - 0.3) * (x - 0.6);}
@@ -69,6 +75,97 @@ function createTrainingSamples(N = 5, range = {max: 1, min: -1}, func: any, nois
 }
 
 
+function createModel(layers: any, activation: string) {
+
+    // Create a sequential model
+    const model = tf.sequential();
+
+    // remove input layer
+    let inputLayer = layers.shift();
+    model.add(tf.layers.dense({
+        inputShape: [1],
+        units: inputLayer.unitCount,
+        useBias: inputLayer.useBias
+    }));
+
+
+    layers.forEach((layer: any) => {
+        const lay = {
+            units: layer.unitCount,
+            useBias: layer.useBias,
+        }
+        model.add(tf.layers.dense(lay));
+    });
+
+    return model;
+}
+
+function convertToTensor(data: any) {
+    return tf.tidy(() => {
+        // Step 1. Shuffle the data
+        tf.util.shuffle(data);
+
+        // Step 2. Convert data to Tensor
+        const inputs = data.map((d: any) => d.x);
+        const labels = data.map((d: any) => d.y);
+
+        const inputTensor = tf.tensor2d(inputs, [inputs.length, 1]);
+        const labelTensor = tf.tensor2d(labels, [labels.length, 1]);
+
+        //Step 3. Normalize the data to the range 0 - 1 using min-max scaling
+        const inputMax = inputTensor.max();
+        const inputMin = inputTensor.min();
+        const labelMax = labelTensor.max();
+        const labelMin = labelTensor.min();
+
+        const normalizedInputs = inputTensor.sub(inputMin).div(inputMax.sub(inputMin));
+        const normalizedLabels = labelTensor.sub(labelMin).div(labelMax.sub(labelMin));
+
+        return {
+            inputs: normalizedInputs,
+            labels: normalizedLabels,
+            // Return the min/max bounds so we can use them later.
+            inputMax,
+            inputMin,
+            labelMax,
+            labelMin,
+        }
+    });
+}
+
+interface TrainingArgs {
+    model: any,
+    inputs: any,
+    labels: any,
+    optimizer: string,
+    epochs: number,
+}
+
+async function trainModel(args: TrainingArgs, container: any){
+    // Prepare the model for training.
+    args.model.compile({
+        optimizer: tf.train.adam(),
+        loss: tf.losses.meanSquaredError,
+        metrics: ['mse'],
+    });
+
+    const batchSize = 32;
+    const epochs = args.epochs;
+
+    const res = await args.model.fit(args.inputs, args.labels, {
+        batchSize,
+        epochs,
+        shuffle: true,
+        callbacks: tfvis.show.fitCallbacks(
+        container,
+        ['mse'],
+        )
+    });
+    console.log(res)
+    return res;
+}
+
+
 function DataVisualisation(props: any) {
 
     const functions: any = {
@@ -77,6 +174,7 @@ function DataVisualisation(props: any) {
     };
 
     const divRef = React.useRef<HTMLDivElement>(null);
+    const div2Ref = React.useRef<HTMLDivElement>(null);
 
     const {
         activationFunction,
@@ -87,6 +185,8 @@ function DataVisualisation(props: any) {
         layerCount,
         uCount } = useAtom(modelState);
 
+    const { data } = useAtom(trainingDataState);
+
     const { N, dataFunction, variance } = useAtom(dataGenerationState);
     const { shouldUpdateData } = useAtom(appState);
     const f: any = functions[dataFunction];
@@ -94,6 +194,25 @@ function DataVisualisation(props: any) {
         updateLayerCount(1);
         updateUCount(3);
         addLayer({ id: generateUID(), unitCount: 3, useBias: true, editable: true });
+    }
+
+
+    const setupModel = () => {
+        // define architecture
+        const model = createModel(layers, 'relu');
+        // prepare data
+        const tensorData = convertToTensor(data);
+        const {inputs, labels} = tensorData;
+        //train model
+        const args: TrainingArgs = {
+            model: model,
+            inputs: inputs,
+            labels: labels,
+            optimizer: 'not implemented',
+            epochs: epochs,
+        }
+        trainModel(args, div2Ref.current);
+        console.log("trained");
     }
 
 
@@ -128,6 +247,7 @@ function DataVisualisation(props: any) {
         const opts = { width: 500, height: 300 };
         if(divRef.current && shouldUpdateData){
             tfvis.render.scatterplot(divRef.current, data, opts);
+            updateTrainingDataState(samples);
             updateShouldUpdate(false);
         }
     });
@@ -136,12 +256,18 @@ function DataVisualisation(props: any) {
     let display = 'flex';
     if(!props.show) {display = 'none';}
 
+
     return (<div>
         <Container sx={{ display: display, width: '1000px' }}>
             <Box sx={{marginTop: '80px', boxShadow: '3px 3px 7px 7px rgba(0,0,0,0.05)'}}>
                 <h3>Training Data</h3>
                 <div ref={divRef} className="plot1"></div>
+                <div ref={div2Ref} className="plot2"></div>
             </Box>
+
+
+
+
             <Container sx={{width: '400px', boxShadow: '3px 3px 7px 7px rgba(0,0,0,0.05)'}}>
                 <h3>model setup</h3>
 
@@ -202,10 +328,13 @@ function DataVisualisation(props: any) {
                     <Button variant="outlined" onClick={()=>setModalOpen(true)}>edit architecture</Button>
                 </Box>
                 <Box sx={{marginTop: '53px'}}>
-                    <Button variant="contained">TRAIN MODEL</Button>
+                    <Button variant="contained" onClick={() => setupModel()}>TRAIN MODEL</Button>
                 </Box>
-
             </Container>
+
+
+
+
         </Container>
         <Modal
             open={modalOpen}
