@@ -3,6 +3,10 @@ import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import * as tfvis from '@tensorflow/tfjs-vis';
 import InputLabel from '@mui/material/InputLabel';
+import OutlinedInput from '@mui/material/OutlinedInput';
+import Layer from '../components/Layer/Layer';
+import Modal from '@mui/material/Modal';
+import Button from '@mui/material/Button';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
@@ -10,7 +14,13 @@ import {
     updateShouldUpdate,
     updateActivationFunction,
     updateDataFunction,
+    updateOptimizer,
     updateVariance,
+    addLayer,
+    updateUCount,
+    updateLayerCount,
+    updateEpochCount,
+    updateLearningRate,
     updateN } from '../state/state';
 import { useAtom } from '@dbeining/react-atom';
 import { modelState, dataGenerationState, appState } from '../state/state';
@@ -36,10 +46,21 @@ function randn_bm(min: any, max: any, skew: any) {
   return num
 }
 
+
+function generateUID() {
+    // I generate the UID from two parts here
+    // to ensure the random number provide enough bits.
+    var firstPart = (Math.random() * 46656) | 0;
+    var secondPart = (Math.random() * 46656) | 0;
+    let x = ("000" + firstPart.toString(36)).slice(-3);
+    let y = ("000" + secondPart.toString(36)).slice(-3);
+    return x + y;
+}
+
 function createTrainingSamples(N = 5, range = {max: 1, min: -1}, func: any, noiseFunc: any) {
-  // create array with lenght N and initialize it with
-  // N values in given range evenly.
-  return Array.apply(null, Array(N)).map(function(x, i){
+    // create array with lenght N and initialize it with
+    // N values in given range evenly.
+    return Array.apply(null, Array(N)).map(function(x, i){
     const frac = (range.max - range.min) / N;
     const xVal  = parseFloat((range.min + ((frac * i) + frac / 2)).toFixed(3));
     const yVal = noise(parseFloat(func(xVal).toFixed(3)));
@@ -57,10 +78,43 @@ function DataVisualisation(props: any) {
 
     const divRef = React.useRef<HTMLDivElement>(null);
 
-    const { activationFunction, layers, learningRate, epochs } = useAtom(modelState);
+    const {
+        activationFunction,
+        optimizer,
+        layers,
+        learningRate,
+        epochs,
+        layerCount,
+        uCount } = useAtom(modelState);
+
     const { N, dataFunction, variance } = useAtom(dataGenerationState);
     const { shouldUpdateData } = useAtom(appState);
     const f: any = functions[dataFunction];
+    const addLayerHandler = () => {
+        updateLayerCount(1);
+        updateUCount(3);
+        addLayer({ id: generateUID(), unitCount: 3, useBias: true, editable: true });
+    }
+
+
+    const layerDisplay = layers.map((layer) => {
+        return <Layer key={layer.id} editable={layer.editable} useBias={layer.useBias} unitCount={layer.unitCount} id={layer.id}/>
+    });
+
+    // MODAL
+    const [ modalOpen, setModalOpen ] = React.useState(false);
+    const modalStyle = {
+        position: 'absolute' as 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: 800,
+        minHeight: 400,
+        bgcolor: 'background.paper',
+        boxShadow: 24,
+        p: 4,
+    };
+    // MODAL
 
     const handleActivationFunctionChange = (event: SelectChangeEvent) => {
         updateActivationFunction(event.target.value);
@@ -71,7 +125,7 @@ function DataVisualisation(props: any) {
         const samples = createTrainingSamples(N, {max:1,min:-1}, f, noise);
         // VISUALISATION
         const data = { values: samples, series: ['x > label'] };
-        const opts = { width: 500};
+        const opts = { width: 500, height: 300 };
         if(divRef.current && shouldUpdateData){
             tfvis.render.scatterplot(divRef.current, data, opts);
             updateShouldUpdate(false);
@@ -88,8 +142,9 @@ function DataVisualisation(props: any) {
                 <h3>Training Data</h3>
                 <div ref={divRef} className="plot1"></div>
             </Box>
-            <Container sx={{width: '200px', boxShadow: '3px 3px 7px 7px rgba(0,0,0,0.05)'}}>
+            <Container sx={{width: '400px', boxShadow: '3px 3px 7px 7px rgba(0,0,0,0.05)'}}>
                 <h3>model setup</h3>
+
                 <Box>
                     <FormControl fullWidth>
                         <InputLabel id="activation-label">Activation Function</InputLabel>
@@ -106,8 +161,73 @@ function DataVisualisation(props: any) {
                         </Select>
                     </FormControl>
                 </Box>
+
+                <Box sx={{ marginTop: '10px' }}>
+                    <FormControl fullWidth>
+                        <InputLabel id="optimizer-label">Optimizer</InputLabel>
+                        <Select
+                            labelId="optimizer-label"
+                            id="op-label"
+                            value={optimizer}
+                            label="optimizer"
+                            onChange={(event: SelectChangeEvent) => updateOptimizer(event.target.value)}
+                        >
+                            <MenuItem value={'adam'}>adam</MenuItem>
+                        </Select>
+                    </FormControl>
+                </Box>
+
+                <Box sx={{ marginTop: '15px', display: 'flex', justifyContent: 'space-around'}}>
+                    <FormControl variant="standard" sx={{marginRight: '10px'}}>
+                        <InputLabel sx={{marginLeft: '16px', top: '-8px'}} htmlFor="component-outlined">learningrate</InputLabel>
+                        <OutlinedInput
+                            id="component-outlined"
+                            value={learningRate}
+                            onChange={(event: any) => updateLearningRate(event.target.value)}
+                            label="learningrate"
+                        />
+                    </FormControl>
+
+                    <FormControl variant="standard">
+                        <InputLabel sx={{marginLeft: '16px', top: '-8px'}} htmlFor="component-outlined">epochs</InputLabel>
+                        <OutlinedInput
+                            id="component-outlined"
+                            value={epochs}
+                            onChange={(event: any) => updateEpochCount(event.target.value)}
+                            label="epochs"
+                        />
+                    </FormControl>
+                </Box>
+                <Box sx={{marginTop: '15px', display: 'flex'}}>
+                    <Button variant="outlined" onClick={()=>setModalOpen(true)}>edit architecture</Button>
+                </Box>
+                <Box sx={{marginTop: '53px'}}>
+                    <Button variant="contained">TRAIN MODEL</Button>
+                </Box>
+
             </Container>
         </Container>
+        <Modal
+            open={modalOpen}
+            onClose={()=>setModalOpen(false)}
+            aria-labelledby="modal-modal-title"
+            aria-describedby="modal-modal-description"
+        >
+            <Box sx={modalStyle}>
+                <h2>ADD LAYERS</h2>
+
+                <Container>
+                    <Container sx={{padding: '20px', maxHeight: '400px', overflow: 'scroll'}}>
+                        {layerDisplay}
+                    </Container>
+                    <Box sx={{marginTop:'20px', display: 'flex', justifyContent: 'space-between'}}>
+                        <Button variant="outlined" onClick={addLayerHandler}>add</Button>
+                        Layercount: {layerCount},
+                        Unitcount: {uCount}
+                    </Box>
+                </Container>
+            </Box>
+      </Modal>
     </div>);
 }
 

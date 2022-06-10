@@ -1,5 +1,11 @@
 import { Atom, swap, deref } from "@dbeining/react-atom";
 
+interface layerInterface {
+    useBias: boolean,
+    unitCount: number,
+    id: string,
+    editable: boolean,
+}
 
 // STATE
 
@@ -9,8 +15,15 @@ export const appState = Atom.of({
 
 export const modelState = Atom.of({
     activationFunction: 'sigmoid',
-    layers: [],
+    optimizer: 'adam',
+    layers: [
+        { useBias: true, editable: false, unitCount: 1, id: 'input' },
+        { useBias: true, editable: true, unitCount: 1, id: 'test' },
+        { useBias: true, editable: false, unitCount: 1, id: 'output' },
+    ],
     learningRate: 1,
+    layerCount: 2,
+    uCount: 2,
     epochs: 35,
 });
 
@@ -26,12 +39,91 @@ const trainingDataState = Atom.of({
 
 
 // ACTIONS
+
+// model State
+export const addLayer = (layer: layerInterface)=>
+    swap(modelState, (state:any) => {
+        let x = state.layers;
+        let outputLayer = x.splice(x.length - 1);
+        x.push(layer);
+        x.push(outputLayer[0]);
+       return ({
+           ...state,
+           layers: x
+       })
+    })
+
+
+export const deleteLayer = (id: string)=>
+    swap(modelState, (state:any) => {
+        let x = state.layers.map((lay: any) =>{
+            if(lay.id !== id){return lay;}
+        })
+        const indexUndefined = x.indexOf(undefined);
+        if (indexUndefined > -1) {
+            x.splice(indexUndefined, 1);
+        }
+       return ({
+           ...state,
+           layers: x
+       })
+    })
+
+export const updateLayer = (layer: layerInterface) =>
+    swap(modelState, (state:any) => {
+        if(isNaN(layer.unitCount)){layer.unitCount = 0}
+        let x = state.layers.map((lay:any)=>{
+            if(lay.id === layer.id){
+                lay.useBias = layer.useBias;
+                lay.unitCount = layer.unitCount;
+            }
+            return lay;
+        });
+
+       return ({
+           ...state,
+           layers: x
+       })
+    })
+
+
 export const updateActivationFunction = (func: any)=>
     swap(modelState, state => ({
        ...state,
         activationFunction: func
     }));
 
+export const updateLayerCount = (inc: number)=>
+    swap(modelState, state => ({
+       ...state,
+        layerCount: state.layerCount + inc
+    }));
+
+
+export const updateUCount = (inc: number)=>
+    swap(modelState, state => ({
+       ...state,
+        uCount: 3,
+    }));
+
+export const updateOptimizer = (func: string)=>
+    swap(modelState, state => ({
+       ...state,
+        optimizer: func
+    }));
+
+export const updateLearningRate = (val: number)=>
+    swap(modelState, state => ({
+       ...state,
+        learningRate: val
+    }));
+
+export const updateEpochCount = (val: number)=>
+    swap(modelState, state => ({
+       ...state,
+        epochs: val
+    }));
+// model State
 
 // data generationstate ------
 export const updateVariance = (variance: any)=>
@@ -51,10 +143,20 @@ export const updateDataFunction = (func: any) =>
         ...state,
         dataFunction: func
     }));
+
+export const clearDataGenerationState = () =>
+    swap(dataGenerationState, state => ({
+        N: 100,
+        dataFunction: 'ea3_func',
+        variance: 0.3
+    }));
 // data generationstate ------
 
+
+// appState
 export const updateShouldUpdate = (val: any) =>
     swap(appState, state => ({
         ...state,
         shouldUpdateData: val
     }));
+// appState

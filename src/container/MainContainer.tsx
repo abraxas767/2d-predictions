@@ -8,7 +8,11 @@ import Select, { SelectChangeEvent } from '@mui/material/Select';
 import Container from '@mui/material/Container';
 import DataVisualisation from '../components/DataVisualisation';
 
-import { updateShouldUpdate, updateDataFunction, updateVariance, updateN } from '../state/state';
+import {
+    updateShouldUpdate,
+    updateDataFunction,
+    updateVariance,
+    updateN } from '../state/state';
 import { useAtom } from '@dbeining/react-atom';
 import { dataGenerationState } from '../state/state';
 
@@ -19,9 +23,6 @@ function MainContainer() {
         'x_squared'
     ]
 
-    //const [N, setN] = React.useState<number>(100);
-    //const [variance, setVariance] = React.useState(0.1);
-    //const [f, setF] = React.useState<string>(functions[0]);
     const [showVis, setShowVis] = React.useState(false);
 
     const { N, dataFunction, variance } = useAtom(dataGenerationState);
