@@ -93,6 +93,7 @@ function createModel(layers: any, activation: string) {
         const lay = {
             units: layer.unitCount,
             useBias: layer.useBias,
+            //activation: 'relu',
         }
         model.add(tf.layers.dense(lay));
     });
@@ -141,7 +142,7 @@ interface TrainingArgs {
     epochs: number,
 }
 
-async function trainModel(args: TrainingArgs, container: any){
+async function trainModel(args: TrainingArgs, callback: any){
     // Prepare the model for training.
     args.model.compile({
         optimizer: tf.train.adam(),
@@ -151,17 +152,20 @@ async function trainModel(args: TrainingArgs, container: any){
 
     const batchSize = 32;
     const epochs = args.epochs;
-
+    const history: any = [];
+    const surface = { name: 'show.history', tab: 'Training' };
     const res = await args.model.fit(args.inputs, args.labels, {
         batchSize,
         epochs,
         shuffle: true,
-        callbacks: tfvis.show.fitCallbacks(
-        container,
-        ['mse'],
-        )
-    });
-    console.log(res)
+        width: '300px',
+        callbacks: {
+            onEpochEnd: (epoch:any, log:any) => {
+                history.push(log);
+                tfvis.show.history(surface, history, ['mse'])
+                },
+    }});
+    callback(res);
     return res;
 }
 
@@ -174,7 +178,10 @@ function DataVisualisation(props: any) {
     };
 
     const divRef = React.useRef<HTMLDivElement>(null);
-    const div2Ref = React.useRef<HTMLDivElement>(null);
+
+    const [ modelSetupOpen, setModelSetupOpen ] = React.useState(true);
+    const [ model, setModel ] = React.useState(null);
+    const [ training, setTraining ] = React.useState(false);
 
     const {
         activationFunction,
@@ -196,6 +203,11 @@ function DataVisualisation(props: any) {
         addLayer({ id: generateUID(), unitCount: 3, useBias: true, editable: true });
     }
 
+    const onTrainingEnd = (res: any) => {
+        console.log("training ended");
+        setTraining(true);
+        setModel(res);
+    }
 
     const setupModel = () => {
         // define architecture
@@ -211,8 +223,8 @@ function DataVisualisation(props: any) {
             optimizer: 'not implemented',
             epochs: epochs,
         }
-        trainModel(args, div2Ref.current);
-        console.log("trained");
+        trainModel(args, onTrainingEnd);
+        setModelSetupOpen(false);
     }
 
 
@@ -256,18 +268,7 @@ function DataVisualisation(props: any) {
     let display = 'flex';
     if(!props.show) {display = 'none';}
 
-
-    return (<div>
-        <Container sx={{ display: display, width: '1000px' }}>
-            <Box sx={{marginTop: '80px', boxShadow: '3px 3px 7px 7px rgba(0,0,0,0.05)'}}>
-                <h3>Training Data</h3>
-                <div ref={divRef} className="plot1"></div>
-                <div ref={div2Ref} className="plot2"></div>
-            </Box>
-
-
-
-
+    let x = (
             <Container sx={{width: '400px', boxShadow: '3px 3px 7px 7px rgba(0,0,0,0.05)'}}>
                 <h3>model setup</h3>
 
@@ -331,7 +332,29 @@ function DataVisualisation(props: any) {
                     <Button variant="contained" onClick={() => setupModel()}>TRAIN MODEL</Button>
                 </Box>
             </Container>
+    );
 
+    let modelPredictButtons = (
+        <Box sx={{margin: '30px', display: 'flex', justifyContent: 'space-between', }}>
+            <Button variant="contained" disabled={!Boolean(model)} onClick={()=>console.log("hello world")}>PREDICT</Button>
+            <Button variant="outlined" onClick={() => tfvis.visor().toggle()}>toggle visor</Button>
+        </Box>
+    )
+
+    if(!modelSetupOpen) {x = (<></>)};
+
+    return (<div>
+        <Container sx={{ display: display, width: '1000px' }}>
+            <Box sx={{marginTop: '80px', marginRight: '60px', boxShadow: '3px 3px 7px 7px rgba(0,0,0,0.05)'}}>
+                <h3>Training Data</h3>
+                <div ref={divRef} className="plot1"></div>
+
+                { modelPredictButtons }
+
+            </Box>
+
+
+            {x}
 
 
 
@@ -356,7 +379,7 @@ function DataVisualisation(props: any) {
                     </Box>
                 </Container>
             </Box>
-      </Modal>
+        </Modal>
     </div>);
 }
 
