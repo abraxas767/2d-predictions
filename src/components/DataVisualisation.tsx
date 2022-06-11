@@ -67,7 +67,6 @@ function generateUID() {
 function testModel(model: any, normalizationData: any) {
     const {inputMax, inputMin, labelMin, labelMax} = normalizationData;
 
-    console.log(model);
     // Generate predictions for a uniform range of numbers between 0 and 1;
     // We un-normalize the data by doing the inverse of the min-max scaling
     // that we did earlier.
@@ -107,11 +106,11 @@ function createTrainingSamples(N = 5, range = {max: 1, min: -1}, func: any, nois
 }
 
 
-function createModel(layers: any, activation: string) {
+function createModel(layers: any, activ: any) {
 
     // Create a sequential model
     const model = tf.sequential();
-
+    console.log(model);
     // remove input layer
     let inputLayer = layers.shift();
     model.add(tf.layers.dense({
@@ -125,10 +124,12 @@ function createModel(layers: any, activation: string) {
         const lay = {
             units: layer.unitCount,
             useBias: layer.useBias,
-            //activation: 'relu',
         }
-        model.add(tf.layers.dense(lay));
+        model.add(tf.layers.dense({...lay, activation: activ}));
     });
+
+    // add inputlayer back in
+    layers.unshift(inputLayer);
 
     return model;
 }
@@ -172,12 +173,13 @@ interface TrainingArgs {
     labels: any,
     optimizer: string,
     epochs: number,
+    learningRate: number,
 }
 
 async function trainModel(args: TrainingArgs, callback: any){
     // Prepare the model for training.
     args.model.compile({
-        optimizer: tf.train.adam(),
+        optimizer: tf.train.adam(args.learningRate),
         loss: tf.losses.meanSquaredError,
         metrics: ['mse'],
     });
@@ -213,7 +215,7 @@ function DataVisualisation(props: any) {
 
     const [ modelSetupOpen, setModelSetupOpen ] = React.useState(true);
     const [ model, setModel ] = React.useState<any>();
-    const [ training, setTraining ] = React.useState(false);
+    const [ training, setTraining ] = React.useState(true);
     const [ predictedData, setPredictedData ] = React.useState<any>([]);
     const [ tensor2dData, setTensor2dData ] = React.useState<any>();
 
@@ -238,8 +240,7 @@ function DataVisualisation(props: any) {
     }
 
     const onTrainingEnd = (res: any, model: any) => {
-        console.log("training ended");
-        setTraining(true);
+        setTraining(false);
         setModel(model);
     }
 
@@ -247,9 +248,18 @@ function DataVisualisation(props: any) {
         setPredictedData(testModel(model, tensor2dData));
     }
 
+    const resetHandler = () => {
+        setModelSetupOpen(true);
+        tfvis.visor().close();
+        setPredictedData([]);
+        setTraining(true);
+        setModel(null);
+    }
+
     const setupModel = () => {
+        console.log(layers);
         // define architecture
-        const model = createModel(layers, 'relu');
+        const model = createModel(layers, activationFunction);
         setModel(model);
         // prepare data
         const tensorData = convertToTensor(data);
@@ -262,9 +272,12 @@ function DataVisualisation(props: any) {
             labels: labels,
             optimizer: 'not implemented',
             epochs: epochs,
+            learningRate: learningRate,
         }
+        setTraining(true);
         trainModel(args, onTrainingEnd);
         setModelSetupOpen(false);
+        tfvis.visor().open();
     }
 
 
@@ -333,9 +346,12 @@ function DataVisualisation(props: any) {
                             label="Activation Function"
                             onChange={handleActivationFunctionChange}
                         >
-                            <MenuItem value={'ReLU'}>ReLU</MenuItem>
+                            <MenuItem value={'relu'}>ReLU</MenuItem>
                             <MenuItem value={'sigmoid'}>sigmoid</MenuItem>
                             <MenuItem value={'tanh'}>tanh</MenuItem>
+                            <MenuItem value={'linear'}>linear</MenuItem>
+                            <MenuItem value={'swish'}>swish</MenuItem>
+                            <MenuItem value={'elu'}>elu</MenuItem>
                         </Select>
                     </FormControl>
                 </Box>
@@ -387,8 +403,9 @@ function DataVisualisation(props: any) {
 
     let modelPredictButtons = (
         <Box sx={{margin: '30px', display: 'flex', justifyContent: 'space-between', }}>
-            <Button variant="contained" disabled={!Boolean(model)} onClick={()=> onPredictHandler()}>PREDICT</Button>
+            <Button variant="contained" disabled={training} onClick={()=> onPredictHandler()}>PREDICT</Button>
             <Button variant="outlined" onClick={() => tfvis.visor().toggle()}>toggle visor</Button>
+            <Button variant="outlined" onClick={()=> resetHandler()}>reset model</Button>
         </Box>
     )
 
