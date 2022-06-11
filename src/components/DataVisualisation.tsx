@@ -63,6 +63,38 @@ function generateUID() {
     return x + y;
 }
 
+
+function testModel(model: any, normalizationData: any) {
+    const {inputMax, inputMin, labelMin, labelMax} = normalizationData;
+
+    console.log(model);
+    // Generate predictions for a uniform range of numbers between 0 and 1;
+    // We un-normalize the data by doing the inverse of the min-max scaling
+    // that we did earlier.
+    const [xs, preds] = tf.tidy(() => {
+
+        const xs = tf.linspace(0, 1, 100);
+        const preds = model.predict(xs.reshape([100, 1]));
+
+        const unNormXs = xs
+        .mul(inputMax.sub(inputMin))
+        .add(inputMin);
+
+        const unNormPreds = preds
+        .mul(labelMax.sub(labelMin))
+        .add(labelMin);
+
+        // Un-normalize the data
+        return [unNormXs.dataSync(), unNormPreds.dataSync()];
+    });
+
+    // return predicted points
+    return Array.from(xs).map((val, i) => {
+        return {x: val, y: preds[i]}
+    });
+
+}
+
 function createTrainingSamples(N = 5, range = {max: 1, min: -1}, func: any, noiseFunc: any) {
     // create array with lenght N and initialize it with
     // N values in given range evenly.
@@ -165,7 +197,7 @@ async function trainModel(args: TrainingArgs, callback: any){
                 tfvis.show.history(surface, history, ['mse'])
                 },
     }});
-    callback(res);
+    callback(res, args.model);
     return res;
 }
 
@@ -180,8 +212,10 @@ function DataVisualisation(props: any) {
     const divRef = React.useRef<HTMLDivElement>(null);
 
     const [ modelSetupOpen, setModelSetupOpen ] = React.useState(true);
-    const [ model, setModel ] = React.useState(null);
+    const [ model, setModel ] = React.useState<any>();
     const [ training, setTraining ] = React.useState(false);
+    const [ predictedData, setPredictedData ] = React.useState<any>([]);
+    const [ tensor2dData, setTensor2dData ] = React.useState<any>();
 
     const {
         activationFunction,
@@ -203,17 +237,23 @@ function DataVisualisation(props: any) {
         addLayer({ id: generateUID(), unitCount: 3, useBias: true, editable: true });
     }
 
-    const onTrainingEnd = (res: any) => {
+    const onTrainingEnd = (res: any, model: any) => {
         console.log("training ended");
         setTraining(true);
-        setModel(res);
+        setModel(model);
+    }
+
+    const onPredictHandler = () => {
+        setPredictedData(testModel(model, tensor2dData));
     }
 
     const setupModel = () => {
         // define architecture
         const model = createModel(layers, 'relu');
+        setModel(model);
         // prepare data
         const tensorData = convertToTensor(data);
+        setTensor2dData(tensorData);
         const {inputs, labels} = tensorData;
         //train model
         const args: TrainingArgs = {
@@ -252,14 +292,25 @@ function DataVisualisation(props: any) {
     }
 
     React.useEffect(()=> {
-        // GENERATE TRAINING SAMPLES
-        const samples = createTrainingSamples(N, {max:1,min:-1}, f, noise);
-        // VISUALISATION
-        const data = { values: samples, series: ['x > label'] };
-        const opts = { width: 500, height: 300 };
-        if(divRef.current && shouldUpdateData){
-            tfvis.render.scatterplot(divRef.current, data, opts);
-            updateTrainingDataState(samples);
+        if(divRef.current){
+            // GENERATE TRAINING SAMPLES
+            let samples;
+            if(data === []){
+                samples = createTrainingSamples(N, {max:1,min:-1}, f, noise);
+                updateTrainingDataState(samples);
+            }
+            if(shouldUpdateData){
+                samples = createTrainingSamples(N, {max:1,min:-1}, f, noise);
+                updateTrainingDataState(samples);
+            }
+            // VISUALISATION
+            //const data = { values: samples, series: ['x > label'] };
+            const opts = { width: 500, height: 300 };
+            tfvis.render.scatterplot(
+                divRef.current,
+                { values: [data, predictedData], series: ['original', 'predicted']},
+                opts
+            );
             updateShouldUpdate(false);
         }
     });
@@ -336,7 +387,7 @@ function DataVisualisation(props: any) {
 
     let modelPredictButtons = (
         <Box sx={{margin: '30px', display: 'flex', justifyContent: 'space-between', }}>
-            <Button variant="contained" disabled={!Boolean(model)} onClick={()=>console.log("hello world")}>PREDICT</Button>
+            <Button variant="contained" disabled={!Boolean(model)} onClick={()=> onPredictHandler()}>PREDICT</Button>
             <Button variant="outlined" onClick={() => tfvis.visor().toggle()}>toggle visor</Button>
         </Box>
     )
