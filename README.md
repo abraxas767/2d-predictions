@@ -1,46 +1,39 @@
-# Getting Started with Create React App
+ EA3 - Predict 2D - Data Documentation
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Tech-Stack
+- React 18.1.0
+- typescript 4.7.3
+- dbeining/react-atom 4.1.21
+- mui/material 5.8.3
+- tensorflowjs/tfjs 3.18.0
+- tensorflow/tfvis 1.5.1
 
-## Available Scripts
+## Dokumentation
 
-In the project directory, you can run:
+Ich habe beschlossen diese Einsendeaufgabe mit React zu lösen, da ich vorallem Material-Design sehr mag und dass hier sehr leicht und einfach einzubauen ist. Für State-Management (React) benutze ich gerne die library "react-atom". Für ein besseres Coding-Erlebnis verwende ich Typescript. Für die eigentlichen Kernaufgaben nutze ich Tensorflowjs und Tensorflowvis für die Visualisierung der Daten.
 
-### `npm start`
+### Trainings Daten
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+Um die Trainingsdaten zu generieren habe ich mir zuerst die gegebene Funktion geplottet und anschließend gleichverteilt N Y-Werte zu verteilen. N kann hierbei auf 5 10 20 50 100 oder 1000 gestellt werden. Bei 1000 Trainingsdaten kann man die unterliegenden Funktionen trotz des später hinzugefügten Rauschens noch sehr gut erkennen.
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+### Model Setup
 
-### `npm test`
+Unter Model-Setup kann man die wichtigsten Einstellungen machen die man an einem Tensorflow-netzwerk so machen kann. Dabei gebe ich die eingegebenen Daten einfach direkt als parameter an Tensorflow weiter (nachdem ich sie validiert habe). Unter "edit architecture" können beliebig viele Layers dem Netzwerk hinzugefügt werden. Auch können jedem Layer eine eigene Anzahl an Units mitgegeben werden.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Training und Prediction
 
-### `npm run build`
+Hat man sich für ein setup entschieden kann man auf den "trainieren" - Button klicken und das Netzwerk wird trainiert. Ursprünglich wollte ich eigentlich nicht das Tensorflowvis - visor für die Visualierung nutzen, es stellte sich aber heraus dass dann doch zu viel Arbeit gewesen wäre.
+Ist das Netzwerk fertig trainiert wird der Button "predict" unter den Trainingsdaten aktiviert und wenn man ihn benutzt werden 100 - Datenpunkte gleichverteilt über den Graphen vom Netzwerk vorhergesehen. Dadurch kann man gut erkennen ob sich das Netzwerk gut angepasst hat oder nicht.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Experimente
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Learning-Rate
+Nach einigem Experimentieren mit der Anwendung kann man feststellen dass eine Lernrate von 0.08 bis 0.1 in den meisten Fällen angebracht ist.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Epochs
+Die 35 voreingestellten Epochen reichen meist nicht aus um die maximale Minimierung des Fehlers zu erreichen. Gute Werte sind hier je nach Rechenleistung und Trainingsdatenmenge (sowie Lernratenwahl), 100 - 200 Epochen.
 
-### `npm run eject`
+### Activation Function
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+Es ist sehr interessant die selben Trainingsdaten über unterschiedliche Aktivierungs-funktionen zu trainieren. Die besten Ergebnisse, also mit dem geringsten Fehler, konnte ich mit dem Tangens Hyperbolicus erreichen, mit einem "mse" von bis zu 0.008.
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
