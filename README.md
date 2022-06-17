@@ -37,3 +37,21 @@ Die 35 voreingestellten Epochen reichen meist nicht aus um die maximale Minimier
 
 Es ist sehr interessant die selben Trainingsdaten über unterschiedliche Aktivierungs-funktionen zu trainieren. Die besten Ergebnisse, also mit dem geringsten Fehler, konnte ich mit dem Tangens Hyperbolicus erreichen, mit einem "mse" von bis zu 0.008.
 
+### Netzwerkarchitektur
+
+Als Standarteinstellung gibt es in jedem Netzwerk eine Input- und eine Outputlayer. In den meisten Fällen sorgen mehr Layer und höherer Unitcount für ein besseres Ergebnisse, insbesondere wenn man den Tangens Hyperbolicus als Aktivierungsfunktion wählt. Bei anderen Funktionen, wie z.B. Relu, scheint es ein Limit zu geben ab welchem zusätzliche Units und Layer das Ergebnis nicht mehr verbessern, sogar verschlechtern können. 
+
+
+## Optimale Einstellung
+
+Um ein optimales Ergebnis zu bekommen habe ich mit folgenden Einstellungen die besten Erfahrungen gemacht:
+
+- N: 100
+- variance: 0.3
+- ea3_func
+- Activation: tanh
+- opt: adam
+- learningrate: 0.08
+- epochs 150
+- architecture: 3 zusätliche Layer mit jeweils 9 Units
+
